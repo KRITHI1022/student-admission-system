@@ -5,7 +5,13 @@ import com.kirithika.studentadmission.dto.response.PaymentOrderResponse;
 
 public interface PaymentService {
 
-    PaymentOrderResponse createOrder(Long applicationId, String studentEmail);
+    PaymentOrderResponse createOrder(
+            Long applicationId,
+            String studentEmail
+    );
 
-    void verifyPayment(PaymentVerificationRequest request);
+    void verifyPayment(
+            PaymentVerificationRequest request,
+            String studentEmail
+    );
 }

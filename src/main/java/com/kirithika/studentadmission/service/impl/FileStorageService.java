@@ -4,12 +4,15 @@ import com.kirithika.studentadmission.exception.FileStorageException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 @Service
@@ -19,41 +22,188 @@ public class FileStorageService {
     private String uploadDir;
 
     private static final List<String> ALLOWED_TYPES = List.of(
-            "application/pdf", "image/jpeg", "image/png");
+            "application/pdf",
+            "image/jpeg",
+            "image/png"
+    );
 
-    private static final long MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+    private static final List<String> ALLOWED_EXTENSIONS = List.of(
+            ".pdf",
+            ".jpg",
+            ".jpeg",
+            ".png"
+    );
+
+    private static final long MAX_FILE_SIZE =
+            5 * 1024 * 1024; // 5 MB
 
     public String storeFile(MultipartFile file) {
 
-        if (file.isEmpty()) {
-            throw new FileStorageException("Cannot upload an empty file");
+        // ========================================================
+        // EMPTY FILE
+        // ========================================================
+
+        if (file == null || file.isEmpty()) {
+            throw new FileStorageException(
+                    "Cannot upload an empty file");
         }
+
+        // ========================================================
+        // FILE SIZE
+        // ========================================================
 
         if (file.getSize() > MAX_FILE_SIZE) {
-            throw new FileStorageException("File size must not exceed 5MB");
+            throw new FileStorageException(
+                    "File size must not exceed 5MB");
         }
 
-        if (!ALLOWED_TYPES.contains(file.getContentType())) {
-            throw new FileStorageException("Only PDF, JPG, and PNG files are allowed");
+        // ========================================================
+        // CONTENT TYPE
+        // ========================================================
+
+        String contentType = file.getContentType();
+
+        if (contentType == null
+                || !ALLOWED_TYPES.contains(
+                contentType.toLowerCase(Locale.ROOT))) {
+
+            throw new FileStorageException(
+                    "Only PDF, JPG, and PNG files are allowed");
         }
+
+        // ========================================================
+        // ORIGINAL FILE NAME
+        // ========================================================
+
+        String originalFileName =
+                file.getOriginalFilename();
+
+        if (originalFileName == null
+                || originalFileName.isBlank()) {
+
+            throw new FileStorageException(
+                    "File name is required");
+        }
+
+        // ========================================================
+        // FILE EXTENSION
+        // ========================================================
+
+        String lowerCaseFileName =
+                originalFileName.toLowerCase(Locale.ROOT);
+
+        String extension = null;
+
+        for (String allowedExtension :
+                ALLOWED_EXTENSIONS) {
+
+            if (lowerCaseFileName.endsWith(
+                    allowedExtension)) {
+
+                extension = allowedExtension;
+                break;
+            }
+        }
+
+        if (extension == null) {
+            throw new FileStorageException(
+                    "Only PDF, JPG, and PNG files are allowed");
+        }
+
+        // ========================================================
+        // STORE FILE
+        // ========================================================
 
         try {
-            Path uploadPath = Paths.get(uploadDir);
+
+            Path uploadPath =
+                    Paths.get(uploadDir)
+                            .toAbsolutePath()
+                            .normalize();
+
             if (!Files.exists(uploadPath)) {
                 Files.createDirectories(uploadPath);
             }
 
-            String originalFileName = file.getOriginalFilename();
-            String extension = originalFileName.substring(originalFileName.lastIndexOf("."));
-            String uniqueFileName = UUID.randomUUID() + extension;
+            /*
+             * Never use the original filename as the stored filename.
+             *
+             * Example:
+             *
+             * Original:
+             * my_marksheet.pdf
+             *
+             * Stored:
+             * 8f4b3e8d-2e8c-4f12-9e0a-123456789abc.pdf
+             */
 
-            Path targetPath = uploadPath.resolve(uniqueFileName);
-            Files.copy(file.getInputStream(), targetPath);
+            String uniqueFileName =
+                    UUID.randomUUID() + extension;
+
+            Path targetPath =
+                    uploadPath.resolve(uniqueFileName)
+                            .normalize();
+
+            /*
+             * Since uniqueFileName is generated by us,
+             * it cannot contain "../" path traversal.
+             */
+            if (!targetPath.startsWith(uploadPath)) {
+                throw new FileStorageException(
+                        "Invalid file path");
+            }
+
+            Files.copy(
+                    file.getInputStream(),
+                    targetPath
+            );
 
             return uniqueFileName;
 
         } catch (IOException e) {
-            throw new FileStorageException("Failed to store file: " + e.getMessage());
+
+            throw new FileStorageException(
+                    "Failed to store file: "
+                            + e.getMessage());
+        }
+    }
+    public Resource loadFile(String fileName) {
+
+        try {
+
+            Path uploadPath =
+                    Paths.get(uploadDir)
+                            .toAbsolutePath()
+                            .normalize();
+
+            Path filePath =
+                    uploadPath.resolve(fileName)
+                            .normalize();
+
+            if (!filePath.startsWith(uploadPath)) {
+                throw new FileStorageException(
+                        "Invalid file path");
+            }
+
+            Resource resource =
+                    new UrlResource(
+                            filePath.toUri()
+                    );
+
+            if (!resource.exists()
+                    || !resource.isReadable()) {
+
+                throw new FileStorageException(
+                        "File not found");
+            }
+
+            return resource;
+
+        } catch (Exception e) {
+
+            throw new FileStorageException(
+                    "Could not read file: "
+                            + e.getMessage());
         }
     }
 }

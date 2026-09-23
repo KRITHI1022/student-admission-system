@@ -24,14 +24,21 @@ public class PaymentController {
             Authentication authentication) {
 
         String studentEmail = authentication.getName();
-        return ResponseEntity.ok(paymentService.createOrder(applicationId, studentEmail));
+
+        return ResponseEntity.ok(
+                paymentService.createOrder(applicationId, studentEmail)
+        );
     }
 
     @PostMapping("/verify")
     public ResponseEntity<String> verifyPayment(
-            @Valid @RequestBody PaymentVerificationRequest request) {
+            @Valid @RequestBody PaymentVerificationRequest request,
+            Authentication authentication) {
 
-        paymentService.verifyPayment(request);
+        String studentEmail = authentication.getName();
+
+        paymentService.verifyPayment(request, studentEmail);
+
         return ResponseEntity.ok("Payment verified successfully");
     }
 }

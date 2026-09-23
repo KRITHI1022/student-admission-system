@@ -1,6 +1,7 @@
 package com.kirithika.studentadmission.entity;
 
 import com.kirithika.studentadmission.enums.DocumentType;
+import com.kirithika.studentadmission.enums.DocumentVerificationStatus;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -39,5 +40,14 @@ public class Document {
     @PrePersist
     protected void onCreate() {
         this.uploadedAt = LocalDateTime.now();
+        this.verificationStatus = DocumentVerificationStatus.PENDING;
     }
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private DocumentVerificationStatus verificationStatus;
+
+    private String verificationRemarks;
+
+
 }

@@ -1,6 +1,7 @@
 package com.kirithika.studentadmission.dto.response;
 
 import com.kirithika.studentadmission.enums.ApplicationStatus;
+import com.kirithika.studentadmission.enums.PaymentStatus;
 import lombok.*;
 
 import java.time.LocalDateTime;
@@ -15,11 +16,16 @@ public class ApplicationResponse {
     private Long id;
     private String studentName;
     private String courseName;
+
     private ApplicationStatus status;
+    private PaymentStatus paymentStatus;
+
     private String remarks;
+
     private Double tenthPercentage;
     private Double twelfthPercentage;
     private Double graduationPercentage;
+
     private LocalDateTime submittedAt;
     private LocalDateTime updatedAt;
 }
